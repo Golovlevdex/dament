@@ -1,3 +1,16 @@
 {
-  "users": {}
+  "users": {
+    "1": {
+      "totalScore": 0
+    },
+    "2": {
+      "totalScore": 0
+    },
+    "3": {
+      "totalScore": 65
+    },
+    "4": {
+      "totalScore": 0
+    }
+  }
 }

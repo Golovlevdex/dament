@@ -548,15 +548,15 @@ const App: React.FC = () => {
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
           <button
             style={{ padding: '10px 24px', fontSize: '1.1rem', borderRadius: 8, border: 'none', background: '#1976d2', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => { setShowRegister(true); setRegisterInput(""); setRegisterError(""); }}
+            onClick={() => { setShowLogin(true); setRegisterInput(""); setRegisterError(""); }}
           >
-            {userName ? 'Сменить пользователя' : 'Регистрация'}
+            {userName ? 'Сменить пользователя' : 'Войти'}
           </button>
           <button
             style={{ padding: '10px 24px', fontSize: '1.1rem', borderRadius: 8, border: 'none', background: '#388e3c', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => { setShowLogin(true); }}
+            onClick={() => { setShowRegister(true); setRegisterInput(""); setRegisterError(""); }}
           >
-            Войти
+            Регистрация
           </button>
         </div>
       {/* Модальное окно входа */}
@@ -597,25 +597,6 @@ const App: React.FC = () => {
                 }}
               >Войти</button>
               <button
-                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#388e3c', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
-                onClick={async () => {
-                  const name = registerInput.trim();
-                  if (!name) {
-                    setRegisterError('Введите имя');
-                    return;
-                  }
-                  try {
-                    await apiGetUser(name);
-                    setRegisterError('Такой пользователь уже есть');
-                  } catch {
-                    await apiCreateUser(name);
-                    setUserName(name);
-                    setShowLogin(false);
-                    setRegisterError("");
-                  }
-                }}
-              >Создать нового</button>
-              <button
                 style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#eee', color: '#333', fontWeight: 600, cursor: 'pointer' }}
                 onClick={() => { setShowLogin(false); setRegisterError(""); }}
               >Отмена</button>
@@ -652,17 +633,26 @@ const App: React.FC = () => {
                     return;
                   }
                   const newUser = registerInput.trim();
-                  setUserName(newUser);
-                  // Сохраняем пользователя через API сразу после регистрации
+                  // Проверяем, есть ли уже такой пользователь
                   try {
-                    await apiCreateUser(newUser);
-                  } catch {}
-                  setShowRegister(false);
+                    await apiGetUser(newUser);
+                    setRegisterError('Пользователь уже существует');
+                  } catch {
+                    // Если не найден — создаём
+                    try {
+                      await apiCreateUser(newUser);
+                      setUserName(newUser);
+                      setShowRegister(false);
+                      setRegisterError("");
+                    } catch {
+                      setRegisterError('Ошибка при создании пользователя');
+                    }
+                  }
                 }}
               >OK</button>
               <button
                 style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#eee', color: '#333', fontWeight: 600, cursor: 'pointer' }}
-                onClick={() => setShowRegister(false)}
+                onClick={() => { setShowRegister(false); setRegisterError(""); }}
               >Отмена</button>
             </div>
           </div>
