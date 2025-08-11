@@ -1,0 +1,1 @@
+{"version":3,"file":"static/css/main.ede11722.css","mappings":"AAAA,kBACE,gBAAiB,CACjB,wBAAyB,CACzB,oBAAqB,CACrB,qBACF","sources":["GameBoard.css"],"sourcesContent":[".user-select-none {\r\n  user-select: none;\r\n  -webkit-user-select: none;\r\n  -ms-user-select: none;\r\n  -moz-user-select: none;\r\n}\r\n"],"names":[],"sourceRoot":""}

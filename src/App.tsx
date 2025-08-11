@@ -12,6 +12,33 @@ import { isWordInDictionary, gameDictionary } from "./dictionary";
 import uiStrings from './ui-strings-categorized.json';
 import { canFormWordOnBoard } from "./anagramGenerator";
 
+// --- API для работы с users.json ---
+async function apiGetUser(name: string) {
+  const res = await fetch(`/api/users/${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error('not_found');
+  return await res.json();
+}
+
+async function apiCreateUser(name: string) {
+  const res = await fetch(`/api/users/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ totalScore: 0 })
+  });
+  if (!res.ok) throw new Error('create_error');
+  return true;
+}
+
+async function apiUpdateUserScore(name: string, totalScore: number) {
+  const res = await fetch(`/api/users/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ totalScore })
+  });
+  if (!res.ok) throw new Error('update_error');
+  return true;
+}
+
 // ...дальнейший код компонента App без дублирующихся объявлений и мусора...
 const getRandomWords = (count: number, dictionary: string[]): string[] => {
   const shuffled = [...dictionary].sort(() => Math.random() - 0.5);
@@ -19,7 +46,51 @@ const getRandomWords = (count: number, dictionary: string[]): string[] => {
 };
 
 const App: React.FC = () => {
+  // --- Модальное окно входа ---
+  const [showLogin, setShowLogin] = useState(false);
+  const [usersList, setUsersList] = useState<string[]>([]);
+
   // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ!
+  // --- Регистрация пользователя ---
+  const [showRegister, setShowRegister] = useState(false);
+  const [userName, setUserName] = useState<string>("");
+  const [registerInput, setRegisterInput] = useState<string>("");
+  const [registerError, setRegisterError] = useState<string>("");
+  // --- Статистика пользователя ---
+  const [userTotalScore, setUserTotalScore] = useState<number>(0);
+  // ...все useState выше...
+  // --- остальные хуки useState ---
+
+  // ...все useState выше...
+
+  // ...все useState выше...
+
+
+  // ...все useState выше...
+
+  // Загрузка статистики пользователя через API при входе
+  useEffect(() => {
+    if (userName) {
+      apiGetUser(userName)
+        .then(user => setUserTotalScore(user.totalScore || 0))
+        .catch(() => setUserTotalScore(0));
+    }
+  }, [userName]);
+
+  // Функция для обновления статистики пользователя через API
+  const updateUserStats = async (scoreToAdd: number) => {
+    if (!userName) return;
+    let prevScore = 0;
+    try {
+      const user = await apiGetUser(userName);
+      prevScore = user.totalScore || 0;
+    } catch {}
+    const newScore = prevScore + scoreToAdd;
+    try {
+      await apiUpdateUserScore(userName, newScore);
+    } catch {}
+    setUserTotalScore(newScore);
+  };
   const [helpSelected, setHelpSelected] = useState<Array<[number, number]>>([]);
   const [helpFlashColor, setHelpFlashColor] = useState<string | null>(null);
   const [analyzerWordCount, setAnalyzerWordCount] = useState(0);
@@ -38,6 +109,14 @@ const App: React.FC = () => {
   const [currentWord, setCurrentWord] = useState<string>("");
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [phase, setPhase] = useState<'playing' | 'results' | 'analyzer' | null>(null);
+
+  // Обновление статистики пользователя после завершения раунда (когда phase становится 'analyzer')
+  useEffect(() => {
+    if (phase === 'analyzer' && userName && score > 0) {
+      updateUserStats(score);
+    }
+    // eslint-disable-next-line
+  }, [phase, userName, score]);
   
   // useRef тоже должен быть в начале!
   const startTouch = React.useRef<{y: number|null}>({y: null});
@@ -436,7 +515,14 @@ const App: React.FC = () => {
       style={{ fontFamily: 'sans-serif', padding: '4vw', width: '100%', maxWidth: 430, margin: '0 auto', textAlign: 'center', boxSizing: 'border-box', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '6vw' }}
     >
       <h1 style={{ fontSize: '2.2rem', margin: '2vw 0 4vw 0' }}>Фундамент</h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '5vw', alignItems: 'center' }}>
+      {userName && (
+        <div style={{ marginBottom: '2vw', color: '#1976d2', fontWeight: 500 }}>
+          Пользователь: {userName}
+          <br />
+          <span style={{ fontSize: '1rem', color: '#333' }}>Общий счёт: <b>{userTotalScore}</b></span>
+        </div>
+      )}
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '5vw', alignItems: 'center' }}>
         <div style={{ minWidth: 180, width: '60vw', maxWidth: 320 }}>
           <GameBoard
             board={startBoard}
@@ -459,7 +545,129 @@ const App: React.FC = () => {
           />
           <div style={{ fontSize: '1rem', color: '#888', margin: '1vw 0 0 0' }}>Проведите по буквам, чтобы открыть справку</div>
         </div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
+          <button
+            style={{ padding: '10px 24px', fontSize: '1.1rem', borderRadius: 8, border: 'none', background: '#1976d2', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => { setShowRegister(true); setRegisterInput(""); setRegisterError(""); }}
+          >
+            {userName ? 'Сменить пользователя' : 'Регистрация'}
+          </button>
+          <button
+            style={{ padding: '10px 24px', fontSize: '1.1rem', borderRadius: 8, border: 'none', background: '#388e3c', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => { setShowLogin(true); }}
+          >
+            Войти
+          </button>
+        </div>
+      {/* Модальное окно входа */}
+      {showLogin && (
+        <div style={{
+          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: '#000a', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, minWidth: 260, boxShadow: '0 2px 16px #0004', textAlign: 'center' }}>
+            <h2 style={{ marginBottom: 16 }}>Войти в профиль</h2>
+            <input
+              type="text"
+              placeholder="Введите имя"
+              value={registerInput}
+              onChange={e => setRegisterInput(e.target.value)}
+              style={{ padding: 8, fontSize: '1.1rem', borderRadius: 6, border: '1px solid #ccc', width: '90%', marginBottom: 12 }}
+              maxLength={20}
+              autoFocus
+            />
+            <div style={{ color: 'red', minHeight: 20, fontSize: '0.95rem' }}>{registerError}</div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
+              <button
+                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                onClick={async () => {
+                  const name = registerInput.trim();
+                  if (!name) {
+                    setRegisterError('Введите имя');
+                    return;
+                  }
+                  try {
+                    await apiGetUser(name);
+                    setUserName(name);
+                    setShowLogin(false);
+                    setRegisterError("");
+                  } catch {
+                    setRegisterError('Пользователь не найден');
+                  }
+                }}
+              >Войти</button>
+              <button
+                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#388e3c', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                onClick={async () => {
+                  const name = registerInput.trim();
+                  if (!name) {
+                    setRegisterError('Введите имя');
+                    return;
+                  }
+                  try {
+                    await apiGetUser(name);
+                    setRegisterError('Такой пользователь уже есть');
+                  } catch {
+                    await apiCreateUser(name);
+                    setUserName(name);
+                    setShowLogin(false);
+                    setRegisterError("");
+                  }
+                }}
+              >Создать нового</button>
+              <button
+                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#eee', color: '#333', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => { setShowLogin(false); setRegisterError(""); }}
+              >Отмена</button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
+
+      {/* Модальное окно регистрации */}
+      {showRegister && (
+        <div style={{
+          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: '#000a', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, minWidth: 260, boxShadow: '0 2px 16px #0004', textAlign: 'center' }}>
+            <h2 style={{ marginBottom: 16 }}>Регистрация</h2>
+            <input
+              type="text"
+              placeholder="Введите имя"
+              value={registerInput}
+              onChange={e => setRegisterInput(e.target.value)}
+              style={{ padding: 8, fontSize: '1.1rem', borderRadius: 6, border: '1px solid #ccc', width: '90%', marginBottom: 12 }}
+              maxLength={20}
+              autoFocus
+            />
+            <div style={{ color: 'red', minHeight: 20, fontSize: '0.95rem' }}>{registerError}</div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
+              <button
+                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                onClick={async () => {
+                  if (!registerInput.trim()) {
+                    setRegisterError('Введите имя');
+                    return;
+                  }
+                  const newUser = registerInput.trim();
+                  setUserName(newUser);
+                  // Сохраняем пользователя через API сразу после регистрации
+                  try {
+                    await apiCreateUser(newUser);
+                  } catch {}
+                  setShowRegister(false);
+                }}
+              >OK</button>
+              <button
+                style={{ padding: '8px 18px', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#eee', color: '#333', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setShowRegister(false)}
+              >Отмена</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
